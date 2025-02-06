@@ -108,7 +108,7 @@ def generate_visual(scramble: dict):
     for move in moves:
         execute_turn(move)
     
-    cube_state = {
+    visual = {
         "white": array1.tolist(),
         "orange": array2.tolist(),
         "green": array3.tolist(),
@@ -117,4 +117,4 @@ def generate_visual(scramble: dict):
         "yellow": array6.tolist(),
     }
 
-    return jsonable_encoder(cube_state)
+    return jsonable_encoder(visual)
