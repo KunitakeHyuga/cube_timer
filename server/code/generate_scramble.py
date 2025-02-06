@@ -3,6 +3,7 @@ import random
 
 app = FastAPI()
 
+
 def generate_scramble():
     moves = ["U", "D", "R", "L", "F", "B"]
     modifiers = ["", "'", "2"]  # 通常, 逆回転, 2回転
