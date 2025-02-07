@@ -101,8 +101,19 @@ def execute_turn(turn):
     else:
         print(f"Unknown move: {turn}")
 
+def reset_arrays():
+    global array1, array2, array3, array4, array5, array6
+    array1 = np.full((3, 3), 1)  # 白
+    array2 = np.full((3, 3), 2)  # オレンジ
+    array3 = np.full((3, 3), 3)  # 緑
+    array4 = np.full((3, 3), 4)  # 赤
+    array5 = np.full((3, 3), 5)  # 青
+    array6 = np.full((3, 3), 6)  # 黄色
+
+
 
 def generate_visual(scramble: dict):
+    reset_arrays()
     input_moves = scramble["scramble"]
     moves = input_moves.split()
     for move in moves:
@@ -116,5 +127,6 @@ def generate_visual(scramble: dict):
         "blue": array5.tolist(),
         "yellow": array6.tolist(),
     }
-
+    
+    print(jsonable_encoder(visual))
     return jsonable_encoder(visual)
