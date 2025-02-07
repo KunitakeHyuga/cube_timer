@@ -128,5 +128,4 @@ def generate_visual(scramble: dict):
         "yellow": array6.tolist(),
     }
     
-    print(jsonable_encoder(visual))
     return jsonable_encoder(visual)
