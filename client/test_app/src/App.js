@@ -7,6 +7,65 @@ const App = () => {
   const [scramble, setScramble] = useState(""); // スクランブル
   const [visual, setVisual] = useState(null);
   const [rubikColors, setRubikColors] = useState([]);
+  const [time, setTime] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isKeyDown, setIsKeyDown] = useState(false);
+  const [wasStopped, setWasStopped] = useState(false);
+  let interval;
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.code === "Space" && !isKeyDown) {
+        setIsKeyDown(true);
+        if (isRunning) {
+          setIsRunning(false);
+          setWasStopped(true); // ストップ直後のフラグを立てる
+          fetchScramble();
+        }
+      }
+    };
+
+    const handleKeyUp = (event) => {
+      if (event.code === "Space" && isKeyDown) {
+        setIsKeyDown(false);
+        if (!isRunning && !wasStopped) {
+          setTime(0);
+          setIsRunning(true);
+        }
+        setWasStopped(false); // 1回の keyup で解除する
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [isRunning, isKeyDown, wasStopped]);
+
+  useEffect(() => {
+    if (isRunning) {
+      interval = setInterval(() => {
+        setTime((prevTime) => prevTime + 10);
+      }, 10);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [isRunning]);
+
+  const formatTime = (time) => {
+    const minutes = Math.floor(time / 60000);
+    const seconds = Math.floor((time % 60000) / 1000);
+    const milliseconds = Math.floor((time % 1000) / 10).toString().padStart(2, "0");
+
+    if (minutes > 0) {
+        return `${minutes}:${seconds.toString().padStart(2, "0")}.${milliseconds}`;
+    } else {
+        return `${seconds}.${milliseconds}`;
+    }
+};
   
 
   // スクランブルを取得する関数
@@ -48,15 +107,15 @@ const App = () => {
   useEffect(() => {
     if (visual) {
       setRubikColors([
-        '', '', '', colorMapping[visual.white[0][0]], colorMapping[visual.white[0][1]], colorMapping[visual.white[0][2]], '', '', '', '', '', '',
-        '', '', '', colorMapping[visual.white[1][0]], colorMapping[visual.white[1][1]], colorMapping[visual.white[1][2]], '', '', '', '', '', '',
-        '', '', '', colorMapping[visual.white[2][0]], colorMapping[visual.white[2][1]], colorMapping[visual.white[2][2]], '', '', '', '', '', '',
-        colorMapping[visual.orange[0][0]], colorMapping[visual.orange[0][1]], colorMapping[visual.orange[0][2]], colorMapping[visual.green[0][0]], colorMapping[visual.green[0][1]], colorMapping[visual.green[0][2]], colorMapping[visual.red[0][0]], colorMapping[visual.red[0][1]], colorMapping[visual.red[0][2]], colorMapping[visual.blue[0][0]], colorMapping[visual.blue[0][1]], colorMapping[visual.blue[0][2]],
-        colorMapping[visual.orange[1][0]], colorMapping[visual.orange[1][1]], colorMapping[visual.orange[1][2]], colorMapping[visual.green[1][0]], colorMapping[visual.green[1][1]], colorMapping[visual.green[1][2]], colorMapping[visual.red[1][0]], colorMapping[visual.red[1][1]], colorMapping[visual.red[1][2]], colorMapping[visual.blue[1][0]], colorMapping[visual.blue[1][1]], colorMapping[visual.blue[1][2]],
-        colorMapping[visual.orange[2][0]], colorMapping[visual.orange[2][1]], colorMapping[visual.orange[2][2]], colorMapping[visual.green[2][0]], colorMapping[visual.green[2][1]], colorMapping[visual.green[2][2]], colorMapping[visual.red[2][0]], colorMapping[visual.red[2][1]], colorMapping[visual.red[2][2]], colorMapping[visual.blue[2][0]], colorMapping[visual.blue[2][1]], colorMapping[visual.blue[2][2]],
-        '', '', '', colorMapping[visual.yellow[0][0]], colorMapping[visual.yellow[0][1]], colorMapping[visual.yellow[0][2]], '', '', '', '', '', '',
-        '', '', '', colorMapping[visual.yellow[1][0]], colorMapping[visual.yellow[1][1]], colorMapping[visual.yellow[1][2]], '', '', '', '', '', '',
-        '', '', '', colorMapping[visual.yellow[2][0]], colorMapping[visual.yellow[2][1]], colorMapping[visual.yellow[2][2]], '', '', '', '', '', ''
+        '', '', '', '',colorMapping[visual.white[0][0]], colorMapping[visual.white[0][1]], colorMapping[visual.white[0][2]], '','', '', '', '', '', '','',
+        '', '', '', '',colorMapping[visual.white[1][0]], colorMapping[visual.white[1][1]], colorMapping[visual.white[1][2]], '','', '', '', '', '', '','',
+        '', '', '', '',colorMapping[visual.white[2][0]], colorMapping[visual.white[2][1]], colorMapping[visual.white[2][2]], '','', '', '', '', '', '','',
+        colorMapping[visual.orange[0][0]], colorMapping[visual.orange[0][1]], colorMapping[visual.orange[0][2]], '',colorMapping[visual.green[0][0]], colorMapping[visual.green[0][1]], colorMapping[visual.green[0][2]], '',colorMapping[visual.red[0][0]], colorMapping[visual.red[0][1]], colorMapping[visual.red[0][2]], '',colorMapping[visual.blue[0][0]], colorMapping[visual.blue[0][1]], colorMapping[visual.blue[0][2]],
+        colorMapping[visual.orange[1][0]], colorMapping[visual.orange[1][1]], colorMapping[visual.orange[1][2]], '',colorMapping[visual.green[1][0]], colorMapping[visual.green[1][1]], colorMapping[visual.green[1][2]], '',colorMapping[visual.red[1][0]], colorMapping[visual.red[1][1]], colorMapping[visual.red[1][2]], '',colorMapping[visual.blue[1][0]], colorMapping[visual.blue[1][1]], colorMapping[visual.blue[1][2]],
+        colorMapping[visual.orange[2][0]], colorMapping[visual.orange[2][1]], colorMapping[visual.orange[2][2]], '',colorMapping[visual.green[2][0]], colorMapping[visual.green[2][1]], colorMapping[visual.green[2][2]], '',colorMapping[visual.red[2][0]], colorMapping[visual.red[2][1]], colorMapping[visual.red[2][2]], '',colorMapping[visual.blue[2][0]], colorMapping[visual.blue[2][1]], colorMapping[visual.blue[2][2]],
+        '', '', '', '',colorMapping[visual.yellow[0][0]], colorMapping[visual.yellow[0][1]], colorMapping[visual.yellow[0][2]], '','', '', '', '', '', '','',
+        '', '', '', '',colorMapping[visual.yellow[1][0]], colorMapping[visual.yellow[1][1]], colorMapping[visual.yellow[1][2]], '','', '', '', '', '', '','',
+        '', '', '', '',colorMapping[visual.yellow[2][0]], colorMapping[visual.yellow[2][1]], colorMapping[visual.yellow[2][2]], '','', '', '', '', '', '', ''
       ]);
     }
   }, [visual]); // `visual` が更新されるたびに `rubikColors` を再計算
@@ -164,9 +223,10 @@ const App = () => {
           fontWeight: 'bold',
           marginBottom: '2rem',
           color: '#000',
+          fontVariantNumeric: 'tabular-nums', 
         }}
       >
-        1:05.92
+        {formatTime(time)}
       </h1>
       <h3
         style={{
@@ -186,6 +246,7 @@ const App = () => {
       >
         ao12: 1:12.68
       </h3>
+      <p>Press Space to Start/Stop</p>
     </div>
   ) : (
     <div>
@@ -220,30 +281,37 @@ const App = () => {
 
       {/* Rubik's Cube 展開図 */}
       <div className="position-fixed bottom-0 end-0 mb-3 me-3">
+  <div
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, 25px) 7px repeat(3, 25px) 7px repeat(3, 25px) 7px repeat(3, 25px)', // 列数を15に設定
+      gridGap: '0px', // 通常のセル間隔
+      backgroundColor: '#e9ecef',
+      padding: '8px',
+      border: '4px solid #ced4da',
+      borderRadius: '15px'
+    }}
+  >
+    {rubikColors.map((color, index) => {
+      // 3×3ブロックの間隔を開ける
+      const isGapRow = Math.floor(index / 15) % 3 === 2 && Math.floor(index / 15) !== 0;
+
+      return (
         <div
+          key={index}
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(12, 25px)', // 列数を12に設定
-            gridGap: '2px', // 各セルの間隔
-            backgroundColor: '#e9ecef',
-            padding: '10px',
-            border: '1px solid #ced4da',
+            width: '25px',
+            height: '25px',
+            backgroundColor: color || 'transparent',
+            border: color ? '1px solid black' : 'none',
+            marginBottom: isGapRow ? '7px' : '0px', // 3行ごとに隙間
           }}
-          
-        >
-          {rubikColors.map((color, index) => (
-            <div
-              key={index}
-              style={{
-                width: '25px',
-                height: '25px',
-                backgroundColor: color || 'transparent',
-                border: color ? '1px solid black' : 'none',
-              }}
-            />
-          ))}
-        </div>
-      </div>
+        />
+      );
+    })}
+  </div>
+</div>
+
     </div>
   );
 };
