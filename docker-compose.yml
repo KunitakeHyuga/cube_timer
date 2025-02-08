@@ -7,7 +7,7 @@ services:
     restart: always
     tty: true
     environment:
-      MYSQL_DATABASE: sample_db
+      MYSQL_DATABASE: cube_solver
       MYSQL_USER: user
       MYSQL_PASSWORD: password
       MYSQL_ROOT_PASSWORD: password
@@ -15,9 +15,7 @@ services:
       - 3306:3306
     command: --port 3306
     volumes: 
-      - ./mysql/initdb.d:/docker-entrypoint-initdb.d
-      - ./mysql/conf.d:/etc/myaql/conf.d
-      - ./mysql/log/mysql:/var/log/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   server:
     links:
