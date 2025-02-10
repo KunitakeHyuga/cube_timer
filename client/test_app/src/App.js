@@ -1,18 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { Modal, Button } from 'react-bootstrap';
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState('timer'); // 現在のタブ状態
-  const [scramble, setScramble] = useState(""); // スクランブル
+  const [activeTab, setActiveTab] = useState('timer');
+  const [scramble, setScramble] = useState("");
   const [visual, setVisual] = useState(null);
+  const [solves, setSolves] = useState([]);
   const [rubikColors, setRubikColors] = useState([]);
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isKeyDown, setIsKeyDown] = useState(false);
   const [wasStopped, setWasStopped] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedSolve, setSelectedSolve] = useState(null);
   let interval;
 
+  const handleStop = async () => {
+    try {
+      const postData = {
+        time: time / 1000, // ミリ秒 → 秒に変換
+        scramble: scramble,
+        note: "",
+        status: "ok",
+      };
+  
+      await axios.post("http://localhost:8000/solves", postData);
+      console.log("Solve posted successfully:", postData);
+      fetchSolves();
+    } catch (error) {
+      console.error("Error posting solve:", error);
+    }
+  };
+  
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.code === "Space" && !isKeyDown) {
@@ -20,11 +41,12 @@ const App = () => {
         if (isRunning) {
           setIsRunning(false);
           setWasStopped(true); // ストップ直後のフラグを立てる
+          handleStop(); // タイマーをストップしたときにPOSTリクエストを送信
           fetchScramble();
         }
       }
     };
-
+  
     const handleKeyUp = (event) => {
       if (event.code === "Space" && isKeyDown) {
         setIsKeyDown(false);
@@ -35,14 +57,14 @@ const App = () => {
         setWasStopped(false); // 1回の keyup で解除する
       }
     };
-
+  
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [isRunning, isKeyDown, wasStopped]);
+  }, [isRunning, isKeyDown, wasStopped, time, scramble]);
 
   useEffect(() => {
     if (isRunning) {
@@ -66,7 +88,15 @@ const App = () => {
         return `${seconds}.${milliseconds}`;
     }
 };
-  
+const fetchSolves = async () => {
+  try {
+    const response = await axios.get("http://localhost:8000/solves");
+    const sortedSolves = response.data.sort((a, b) => b.id - a.id);
+    setSolves(sortedSolves);
+  } catch (error) {
+    console.error("Error fetching solves:", error);
+  }
+};
 
   // スクランブルを取得する関数
   const fetchScramble = async () => {
@@ -104,6 +134,8 @@ const App = () => {
     };
   }
 
+  
+
   useEffect(() => {
     if (visual) {
       setRubikColors([
@@ -122,9 +154,19 @@ const App = () => {
   
   
   // 初回ロード時にスクランブルを取得
-  useEffect(() => {
-    fetchScramble();
+  useEffect(() => { 
+    fetchScramble(); 
+    fetchSolves(); 
   }, []);
+
+  const handleShowModal = (solve) => {
+    setSelectedSolve(solve);
+    setShowModal(true);
+  };
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedSolve(null);
+  };
 
   return (
     <div
@@ -257,27 +299,62 @@ const App = () => {
 </div>
 
 
-      {/* タスクテーブル
-      <div className="position-fixed bottom-0 start-0 mb-3 ms-3">
-        <table className="table table-bordered bg-white" style={{ width: '300px' }}>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>タイトル</th>
-              <th>完了状況</th>
+<div
+  style={{
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    width: '300px',
+    maxHeight: '50vh',
+    overflowY: 'auto',
+    background: 'rgba(255, 255, 255, 0.9)',
+    padding: '10px',
+    borderTop: '2px solid #ccc',
+    borderRight: '2px solid #ccc',
+    borderRadius: '10px 10px 0 0',
+  }}
+>
+<h2>タイム一覧</h2>
+      <table className="table table-striped">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>タイム</th>
+          </tr>
+        </thead>
+        <tbody>
+          {solves.map((solve) => (
+            <tr key={solve.id} onClick={() => handleShowModal(solve)} style={{ cursor: 'pointer' }}>
+              <td>{solve.id}</td>
+              <td>{solve.time.toFixed(2)}</td>
             </tr>
-          </thead>
-          <tbody>
-            {tasks.map(task => (
-              <tr key={task.id}>
-                <td>{task.id}</td>
-                <td>{task.title}</td>
-                <td>{task.done ? '完了' : '未完了'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div> */}
+          ))}
+        </tbody>
+      </table>
+
+      {/* モーダルポップアップ */}
+      <Modal show={showModal} onHide={handleCloseModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>詳細情報</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedSolve && (
+            <div>
+              <p><strong>ID:</strong> {selectedSolve.id}</p>
+              <p><strong>タイム:</strong> {selectedSolve.time.toFixed(2)} s</p>
+              <p><strong>スクランブル:</strong> {selectedSolve.scramble}</p>
+              <p><strong>登録日時:</strong> {new Date(selectedSolve.created_at).toLocaleString()}</p>
+              <p><strong>メモ:</strong> {selectedSolve.note || "なし"}</p>
+              <p><strong>ステータス:</strong> {selectedSolve.status}</p>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseModal}>閉じる</Button>
+        </Modal.Footer>
+      </Modal>
+</div>
+
 
       {/* Rubik's Cube 展開図 */}
       <div className="position-fixed bottom-0 end-0 mb-3 me-3">
