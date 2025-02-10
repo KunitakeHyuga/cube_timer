@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Modal, Button } from 'react-bootstrap';
+import { Clipboard } from 'react-bootstrap-icons';
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('timer');
@@ -15,7 +16,13 @@ const App = () => {
   const [wasStopped, setWasStopped] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedSolve, setSelectedSolve] = useState(null);
+  const [editedNote, setEditedNote] = useState(selectedSolve ? selectedSolve.note : "");
+  const [editedStatus, setEditedStatus] = useState(selectedSolve ? selectedSolve.status : "ok");
   let interval;
+  let bestSingle = Infinity;
+  let bestAo5 = Infinity;
+  let bestAo12 = Infinity;
+  let bestAo100 = Infinity;
 
   const handleStop = async () => {
     try {
@@ -161,12 +168,193 @@ const fetchSolves = async () => {
 
   const handleShowModal = (solve) => {
     setSelectedSolve(solve);
-    setShowModal(true);
+  setEditedNote(solve.note);  // 選択したソルブのメモを設定
+  setEditedStatus(solve.status);  // 選択したソルブのステータスを設定
+  setShowModal(true);
   };
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedSolve(null);
   };
+
+  const handleUpdateSolve = async () => {
+    if (!selectedSolve) return;
+  
+    const updatedSolve = {
+      id: selectedSolve.id,
+      time: selectedSolve.time,
+      scramble: selectedSolve.scramble,
+      created_at: selectedSolve.created_at,
+      note: editedNote,
+      status: editedStatus,
+    };
+  
+    try {
+      // `response` に代入する
+      const response = await axios.put(`http://localhost:8000/solves/${selectedSolve.id}`, updatedSolve);
+  
+      if (response.status === 200) {
+        alert('更新しました');
+        handleCloseModal();
+        fetchSolves(); // 更新後に最新データを取得
+      } else {
+        alert('更新に失敗しました');
+      }
+    } catch (error) {
+      console.error('エラー:', error);
+      alert('通信エラーが発生しました');
+    }
+  };
+
+  const handleDeleteSolve = async () => {
+    if (!selectedSolve) return;
+
+    if (!window.confirm('本当に削除しますか？')) return;
+
+    try {
+        // `response` に代入する
+        const response = await axios.delete(`http://localhost:8000/solves/${selectedSolve.id}`);
+
+        if (response.status === 200) {
+            alert('削除しました');
+            handleCloseModal();
+            fetchSolves(); // 削除後に最新データを取得
+        } else {
+            alert('削除に失敗しました');
+        }
+    } catch (error) {
+        console.error('エラー:', error);
+        alert('通信エラーが発生しました');
+    }
+};
+
+  
+
+  const handleCopyScramble = () => {
+    if (selectedSolve) {
+      navigator.clipboard.writeText(selectedSolve.scramble);
+    }
+  };
+
+  const calculateAo5 = (solves, index) => {
+    if ((solves.length - index) < 5) return "-"; // 直近5個のデータがない場合
+  
+    // 直近5つのデータを取得
+    const lastFive = solves.slice(index, index + 5);
+  
+    // タイムを取得し、+2のペナルティを反映
+    const times = lastFive.map(solve =>
+      solve.status === "DNF" ? "DNF" : solve.status === "+2" ? solve.time + 2 : solve.time
+    );
+  
+    // DNF の数をカウント
+    const dnfCount = times.filter(time => time === "DNF").length;
+    
+    if (dnfCount >= 2) return "DNF"; // DNF が2つ以上なら ao5 も DNF
+    
+    // DNF が 1 つだけなら、それを最遅として扱う
+    let filteredTimes = times.filter(time => time !== "DNF").sort((a, b) => a - b);
+    if (dnfCount === 1) {
+      filteredTimes.push("DNF");
+    }
+  
+    // 最速と最遅を除外
+    filteredTimes = filteredTimes.slice(1, 4);
+    
+    // 平均を計算
+    const average = filteredTimes.reduce((sum, time) => sum + time, 0) / filteredTimes.length;
+    return average.toFixed(2);
+  };
+
+  const calculateAo12 = (solves, index) => {
+    if ((solves.length - index) < 12) return "-"; // 直近5個のデータがない場合
+  
+    // 直近5つのデータを取得
+    const lastFive = solves.slice(index, index + 12);
+  
+    // タイムを取得し、+2のペナルティを反映
+    const times = lastFive.map(solve =>
+      solve.status === "DNF" ? "DNF" : solve.status === "+2" ? solve.time + 2 : solve.time
+    );
+  
+    // DNF の数をカウント
+    const dnfCount = times.filter(time => time === "DNF").length;
+    
+    if (dnfCount >= 2) return "DNF"; // DNF が2つ以上なら ao5 も DNF
+    
+    // DNF が 1 つだけなら、それを最遅として扱う
+    let filteredTimes = times.filter(time => time !== "DNF").sort((a, b) => a - b);
+    if (dnfCount === 1) {
+      filteredTimes.push("DNF");
+    }
+  
+    // 最速と最遅を除外
+    filteredTimes = filteredTimes.slice(1, 11);
+    
+    // 平均を計算
+    const average = filteredTimes.reduce((sum, time) => sum + time, 0) / filteredTimes.length;
+    return average.toFixed(2);
+  };
+
+  const calculateValidMean = (solves) => {
+    if (!Array.isArray(solves) || solves.length === 0) return "N/A";
+
+    const validSolves = solves
+        .filter(s => s.status?.toUpperCase() !== "DNF")
+        .map(s => (s.status === "+2" ? Number(s.time) + 2 : Number(s.time)))
+        .filter(time => !isNaN(time)); // NaN を除外するため
+
+    if (validSolves.length === 0) return "N/A";
+
+    const meanTime = validSolves.reduce((sum, time) => sum + time, 0) / validSolves.length;
+    return meanTime.toFixed(2) + "s";
+};
+
+
+const calculateBestAo5 = (solves) => {
+  for (let i = 0; i < solves.length; i++) {
+      const ao5 = parseFloat(calculateAo5(solves, i));
+      if (!isNaN(ao5) && ao5 !== "DNF" && ao5 < bestAo5) {
+          bestAo5 = ao5;
+      }
+  }
+  return bestAo5 === Infinity ? "-" : bestAo5.toFixed(2);
+};
+
+const calculateBestAo12 = (solves) => {
+  for (let i = 0; i < solves.length; i++) {
+      const ao12 = parseFloat(calculateAo12(solves, i));
+      if (!isNaN(ao12) && ao12 !== "DNF" && ao12 < bestAo12) {
+          bestAo12 = ao12;
+      }
+  }
+  return bestAo12 === Infinity ? "-" : bestAo12.toFixed(2);
+};
+
+const currentSolve = solves.length > 0 ? solves[0] : null;
+const currentTime = currentSolve
+  ? currentSolve.status === "DNF"
+    ? "DNF"
+    : currentSolve.status === "+2"
+      ? `${(currentSolve.time + 2).toFixed(2)}+`
+      : currentSolve.time.toFixed(2)
+  : "-";
+
+  const calculateBestSingle = (solves) => {
+    for (let i = 0; i < solves.length; i++) {
+      const solve = solves[i];
+
+      if (solve.status === "DNF") continue; // DNFは除外
+
+      const single = solve.status === "+2" ? solve.time + 2 : solve.time; // +2ペナルティの処理
+
+      if (single < bestSingle) {
+          bestSingle = single;
+      }
+  }
+    return bestSingle === Infinity ? "-" : bestSingle.toFixed(2);
+  };
+  
 
   return (
     <div
@@ -277,7 +465,7 @@ const fetchSolves = async () => {
           color: '#555',
         }}
       >
-        ao5: 1:11.66
+        ao5: {solves.length >= 5 ? calculateAo5(solves, 0) : "-"}
       </h3>
       <h3
         style={{
@@ -286,7 +474,7 @@ const fetchSolves = async () => {
           color: '#555',
         }}
       >
-        ao12: 1:12.68
+        ao12: {solves.length >= 12 ? calculateAo12(solves, 0) : "-"}
       </h3>
       <p>Press Space to Start/Stop</p>
     </div>
@@ -302,57 +490,156 @@ const fetchSolves = async () => {
 <div
   style={{
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: '300px',
-    maxHeight: '50vh',
-    overflowY: 'auto',
+    bottom: 20,
+    left: 20,
+    width: '320px',
+    maxHeight: '75vh', 
+    overflowY: 'scroll', 
     background: 'rgba(255, 255, 255, 0.9)',
     padding: '10px',
-    borderTop: '2px solid #ccc',
-    borderRight: '2px solid #ccc',
-    borderRadius: '10px 10px 0 0',
+    border: '3px solid #ccc',
+    borderRadius: '10px',
   }}
 >
-<h2>タイム一覧</h2>
-      <table className="table table-striped">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>タイム</th>
-          </tr>
-        </thead>
-        <tbody>
-          {solves.map((solve) => (
-            <tr key={solve.id} onClick={() => handleShowModal(solve)} style={{ cursor: 'pointer' }}>
-              <td>{solve.id}</td>
-              <td>{solve.time.toFixed(2)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+<style>
+    {`
+      /* Chrome, Safari 用 */
+      div::-webkit-scrollbar {
+        display: none;
+      }
+    `}
+  </style>
+  
+  <div style={{ textAlign: 'center', fontSize: 18, marginBottom: 10 }}>
+  <table style={{ width: '100%', textAlign: 'center', fontSize: 20, marginBottom: 10 }}>
+      <thead>
+        <tr>
+          <th> </th>
+          <th>現在</th>
+          <th>ベスト</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>タイム</td>
+          <td style={{ color: 'blue' }}>{solves.length >= 1 ? currentTime : "-"}</td>
+          <td style={{ color: 'blue' }}>{solves.length >= 1 ? calculateBestSingle(solves) : "-"}</td>
+        </tr>
+        <tr>
+          <td>ao5</td>
+          <td style={{ color: 'blue' }}>{solves.length >= 5 ? calculateAo5(solves, 0) : "-"}</td>
+          <td style={{ color: 'blue' }}>{solves.length >= 5 ? calculateBestAo5(solves) : "-"}</td>
+        </tr>
+        <tr>
+          <td>ao12</td>
+          <td style={{ color: 'blue' }}>{solves.length >= 12 ? calculateAo12(solves, 0) : "-"}</td>
+          <td style={{ color: 'blue' }}>{solves.length >= 12 ? calculateBestAo12(solves) : "-"}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style={{ textAlign: 'center', fontSize: 20, marginBottom: 10 }}>
+    <span><strong>有効試技数: {solves.filter(s => s.status !== "DNF").length} / {solves.length} </strong></span><br></br>
+    <span><strong> 平均タイム: {calculateValidMean(solves)} </strong></span>
+    </div>
+  </div>
 
-      {/* モーダルポップアップ */}
-      <Modal show={showModal} onHide={handleCloseModal} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>詳細情報</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedSolve && (
+  {/* スクロール可能なリスト */}
+  <div style={{ maxHeight: '300px', overflowY: 'scroll' }}>
+    <table className="table table-striped" style={{ width: '100%', lineHeight: '1', fontSize: 20, textAlign: 'center' }}>
+      <thead style={{ position: 'sticky', top: 0, background: 'rgba(255, 255, 255, 0.9)' }}>
+      <tr>
+        <th style={{ textAlign: 'center' }}> </th>
+        <th style={{ textAlign: 'center' }}>タイム</th>
+        <th style={{ textAlign: 'center' }}>ao5</th>
+        <th style={{ textAlign: 'center' }}>ao12</th>
+      </tr>
+    </thead>
+    <tbody>
+      {solves.map((solve, index) => (
+        <tr key={solve.id} onClick={() => handleShowModal(solve)} style={{ cursor: 'pointer' }}>
+          <td>{solves.length - index}</td>
+          <td>
+            {solve.status === "DNF"
+              ? "DNF"
+              : solve.status === "+2"
+                ? `${(solve.time + 2).toFixed(2)}+`
+                : solve.time.toFixed(2)}
+          </td>
+          <td>{calculateAo5(solves, index)}</td>
+          <td>{calculateAo12(solves, index)}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  </div>
+
+  {/* モーダルポップアップ */}
+  <Modal show={showModal} onHide={handleCloseModal} centered>
+    <Modal.Header closeButton>
+      <Modal.Title>詳細情報</Modal.Title>
+    </Modal.Header>
+    <Modal.Body>
+      {selectedSolve && (
+        <div>
+          <p><strong>タイム:</strong> 
+            {selectedSolve.status === "DNF"
+              ? `DNF (${selectedSolve.time.toFixed(2)})`
+              : selectedSolve.status === "+2"
+                ? ` ${(selectedSolve.time + 2).toFixed(2)}+ s`
+                : ` ${selectedSolve.time.toFixed(2)} s`}
+          </p>
+          <p>
+            <strong>スクランブル:</strong><br/> 
+            <span style={{ marginLeft: '10px', flexGrow: 1, wordBreak: 'break-all' }}>
+              {selectedSolve.scramble}
+            </span>
+            <Button 
+              variant="outline-secondary" 
+              size="sm" 
+              onClick={handleCopyScramble} 
+              style={{ marginLeft: '10px' }}
+            >
+              <Clipboard size={16} />
+            </Button>
+          </p>
+          <p><strong>登録日時:</strong> {new Date(selectedSolve.created_at).toLocaleString()}</p>
+
+          {/* メモ編集欄 */}
+          <div>
+            <label><strong>メモ:</strong></label>
+            <textarea
+              value={editedNote}
+              onChange={(e) => setEditedNote(e.target.value)}
+              className="form-control"
+            />
+          </div>
+
+          {/* ステータス選択 */}
+          <div>
+            <label><strong>ステータス:</strong></label>
             <div>
-              <p><strong>ID:</strong> {selectedSolve.id}</p>
-              <p><strong>タイム:</strong> {selectedSolve.time.toFixed(2)} s</p>
-              <p><strong>スクランブル:</strong> {selectedSolve.scramble}</p>
-              <p><strong>登録日時:</strong> {new Date(selectedSolve.created_at).toLocaleString()}</p>
-              <p><strong>メモ:</strong> {selectedSolve.note || "なし"}</p>
-              <p><strong>ステータス:</strong> {selectedSolve.status}</p>
+              {['ok', '+2', 'DNF'].map((status) => (
+                <label key={status} className="me-2">
+                  <input
+                    type="radio"
+                    name="status"
+                    value={status}
+                    checked={editedStatus === status}
+                    onChange={(e) => setEditedStatus(e.target.value)}
+                  /> {status}
+                </label>
+              ))}
             </div>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseModal}>閉じる</Button>
-        </Modal.Footer>
-      </Modal>
+          </div>
+        </div>
+      )}
+    </Modal.Body>
+    <Modal.Footer>
+      <Button variant="danger" onClick={handleDeleteSolve}>削除</Button>
+      <Button variant="primary" onClick={handleUpdateSolve}>更新する</Button>
+      <Button variant="secondary" onClick={handleCloseModal}>閉じる</Button>
+    </Modal.Footer>
+  </Modal>
 </div>
 
 
