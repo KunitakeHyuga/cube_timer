@@ -1,30 +1,13 @@
-# -*- coding: utf-8 -*-
-# モデルの定義
-from sqlalchemy import Column, Integer, String
-from pydantic import BaseModel
+from sqlalchemy import Column, Integer, String, DateTime, Enum, Float
+from datetime import datetime
 from db import Base
-from db import ENGINE
 
+class Solve(Base):
+    __tablename__ = "solves"
 
-# userテーブルのモデルUserTableを定義
-class UserTable(Base):
-    __tablename__ = 'user'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(30), nullable=False)
-    age = Column(Integer)
-
-
-# POSTやPUTのとき受け取るRequest Bodyのモデルを定義
-class User(BaseModel):
-    id: int
-    name: str
-    age: int
-
-
-def main():
-    # テーブルが存在しなければ、テーブルを作成
-    Base.metadata.create_all(bind=ENGINE)
-
-
-if __name__ == "__main__":
-    main()
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    time = Column(Float, nullable=False)
+    scramble = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    note = Column(String, nullable=True)
+    status = Column(Enum("ok", "+2", "DNF"), default="ok", nullable=False)

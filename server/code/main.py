@@ -4,8 +4,10 @@ from typing import List  # ネストされたBodyを定義するために必要
 from generate_scramble import generate_scramble
 from generate_visual import generate_visual
 from starlette.middleware.cors import CORSMiddleware  # CORSを回避するために必要
-from db import session  # DBと接続するためのセッション
-from model import UserTable, User  # 今回使うモデルをインポート
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.orm import Session
+from db import get_db, engine, Base
+import crud, model, schemas
 
 app = FastAPI()
 
@@ -24,12 +26,6 @@ app.add_middleware(
 def read_root():
     return {"Hello": "World!!!!"}
 
-# テーブルにいる全ユーザ情報を取得 GET
-@app.get("/users")
-def read_users():
-    users = session.query(UserTable).all()
-    return users
-
 @app.get("/scramble")
 def get_scramble():
     return generate_scramble()
@@ -47,7 +43,41 @@ def get_visual():
 
     return JSONResponse(content=response_data)
 
-@app.get("/array")
-def get_array():
-    array1 = [[1,2,3],[4,5,6],[7,8,9]]
-    return {"array" : array1}
+############################################################
+
+# データベースの作成（初回のみ）
+Base.metadata.create_all(bind=engine)
+
+# **1. ソルブ詳細取得**
+@app.get("/solves/{id}", response_model=schemas.SolveResponse)
+def read_solve(id: int, db: Session = Depends(get_db)):
+    db_solve = crud.get_solve(db, id)
+    if db_solve is None:
+        raise HTTPException(status_code=404, detail="Solve not found")
+    return db_solve
+
+# **2. ソルブ一覧取得**
+@app.get("/solves", response_model=List[schemas.SolveResponse])
+def read_solves(db: Session = Depends(get_db)):
+    return crud.get_solves(db)
+
+# **3. ソルブ作成**
+@app.post("/solves", response_model=schemas.SolveResponse)
+def create_solve(solve: schemas.SolveCreate, db: Session = Depends(get_db)):
+    return crud.create_solve(db, solve)
+
+# **4. ソルブ詳細変更**
+@app.put("/solves/{id}", response_model=schemas.SolveResponse)
+def update_solve(id: int, solve: schemas.SolveUpdate, db: Session = Depends(get_db)):
+    db_solve = crud.update_solve(db, id, solve)
+    if db_solve is None:
+        raise HTTPException(status_code=404, detail="Solve not found")
+    return db_solve
+
+# **5. ソルブ削除**
+@app.delete("/solves/{id}", response_model=schemas.SolveResponse)
+def delete_solve(id: int, db: Session = Depends(get_db)):
+    db_solve = crud.delete_solve(db, id)
+    if db_solve is None:
+        raise HTTPException(status_code=404, detail="Solve not found")
+    return db_solve

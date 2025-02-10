@@ -4,7 +4,7 @@ USE cube_solver;
 
 CREATE TABLE IF NOT EXISTS solves (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    time INT NOT NULL,
+    time FLOAT NOT NULL,
     scramble VARCHAR(255) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     note TEXT,
