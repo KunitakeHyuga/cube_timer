@@ -13,17 +13,21 @@ services:
       MYSQL_ROOT_PASSWORD: password
     ports: 
       - 3306:3306
-    command: --port 3306
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes: 
       - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   server:
+    depends_on:
+      - db
     links:
       - db
     build: ./server/
     tty: true
     container_name: back_fastapi
     working_dir: /usr/src/server
+    environment:
+      DATABASE_URL: "mysql+pymysql://user:password@back_db/cube_solver"
     ports:
       - 8000:8000
     volumes:
