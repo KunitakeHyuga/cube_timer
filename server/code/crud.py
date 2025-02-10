@@ -1,12 +1,25 @@
 from sqlalchemy.orm import Session
 from model import Solve
 from schemas import SolveCreate, SolveUpdate
+from datetime import timezone, timedelta
+
+def to_jst(utc_dt):
+    """UTC の datetime を JST に変換"""
+    if utc_dt is not None:
+        return utc_dt.replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=9)))
+    return None
 
 def get_solve(db: Session, solve_id: int):
-    return db.query(Solve).filter(Solve.id == solve_id).first()
+    solve = db.query(Solve).filter(Solve.id == solve_id).first()
+    if solve:
+        solve.created_at = to_jst(solve.created_at)  # JST に変換
+    return solve
 
 def get_solves(db: Session):
-    return db.query(Solve).all()
+    solves = db.query(Solve).all()
+    for solve in solves:
+        solve.created_at = to_jst(solve.created_at)  # JST に変換
+    return solves
 
 def create_solve(db: Session, solve: SolveCreate):
     db_solve = Solve(**solve.dict())
