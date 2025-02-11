@@ -368,7 +368,7 @@ const calculateAo100 = (solves, index) => {
         bestAo5 = ao5;
       }
     }
-    return bestAo5 === Infinity ? "-" : bestAo5;
+    return bestAo5 === Infinity ? "-" : formatSavedTime(bestAo5);
   };
   
   {/* ao12のベストを返す関数 */}
@@ -382,7 +382,7 @@ const calculateAo100 = (solves, index) => {
         bestAo12 = ao12;
       }
     }
-    return bestAo12 === Infinity ? "-" : bestAo12;
+    return bestAo12 === Infinity ? "-" : formatSavedTime(bestAo12);
   };
 
   {/* ao100のベストを返す関数 */}
@@ -396,7 +396,7 @@ const calculateAo100 = (solves, index) => {
         bestAo100 = ao100;
       }
     }
-    return bestAo100 === Infinity ? "-" : bestAo100;
+    return bestAo100 === Infinity ? "-" : formatSavedTime(bestAo100);
   };
   
   {/* 現在の単発を返す関数 */}
