@@ -4,3 +4,5 @@ uvicorn
 fastapi
 numpy
 pymysql
+matplotlib
+pandas
