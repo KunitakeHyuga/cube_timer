@@ -312,6 +312,35 @@ const App = () => {
     const average = filteredTimes.reduce((sum, time) => sum + time, 0) / filteredTimes.length;
     return formatSavedTime(average);
   };
+
+  {/* ao100を計算する関数 */}
+const calculateAo100 = (solves, index) => {
+  if ((solves.length - index) < 100) return "-"; // 直近100個のデータがない場合
+
+  // 直近100個のデータを取得
+  const lastHundred = solves.slice(index, index + 100);
+
+  // タイムを取得し、+2のペナルティを反映
+  const times = lastHundred.map(solve =>
+    solve.status === "DNF" ? "DNF" : solve.status === "+2" ? solve.time + 2 : solve.time
+  );
+
+  // DNF の数をカウント
+  const dnfCount = times.filter(time => time === "DNF").length;
+
+  if (dnfCount >= 10) return "DNF"; // DNFが10個以上なら ao100 も DNF
+
+  // DNF を除外したタイムリストを取得
+  let filteredTimes = times.filter(time => time !== "DNF").sort((a, b) => a - b);
+
+  // 最速5つと最遅5つを除外
+  filteredTimes = filteredTimes.slice(5, -5);
+
+  // 平均を計算
+  const average = filteredTimes.reduce((sum, time) => sum + time, 0) / filteredTimes.length;
+  return formatSavedTime(average);
+};
+
   
   {/* 有効試技数を返す関数 */}
   const calculateValidMean = (solves) => {
@@ -354,6 +383,20 @@ const App = () => {
       }
     }
     return bestAo12 === Infinity ? "-" : bestAo12;
+  };
+
+  {/* ao100のベストを返す関数 */}
+  const calculateBestAo100 = (solves) => {
+    // ao100を配列の長さ分だけループ
+    for (let i = 0; i < solves.length; i++) {
+      const ao100 = parseFloat(calculateAo100(solves, i));
+      
+      // 今のao100とbestao100を比較し，速ければ置き換え
+      if (!isNaN(ao100) && ao100 !== "DNF" && ao100 < bestAo100) {
+        bestAo100 = ao100;
+      }
+    }
+    return bestAo100 === Infinity ? "-" : bestAo100;
   };
   
   {/* 現在の単発を返す関数 */}
@@ -553,6 +596,11 @@ const App = () => {
               <td>ao12</td>
               <td style={{ color: 'blue' }}>{solves.length >= 12 ? calculateAo12(solves, 0) : "-"}</td>
               <td style={{ color: 'blue' }}>{solves.length >= 12 ? calculateBestAo12(solves) : "-"}</td>
+            </tr>
+            <tr>
+              <td>ao100</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 100 ? calculateAo100(solves, 0) : "-"}</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 100 ? calculateBestAo100(solves) : "-"}</td>
             </tr>
           </tbody>
         </table>
