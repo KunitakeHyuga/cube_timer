@@ -24,6 +24,7 @@ const App = () => {
   let bestAo12 = Infinity;
   let bestAo100 = Infinity;
 
+  {/* タイマーストップ後の処理をする関数 */}
   const handleStop = async () => {
     try {
       const postData = {
@@ -41,7 +42,9 @@ const App = () => {
     }
   };
   
+
   useEffect(() => {
+    {/* スペースキーを押した瞬間の処理をする関数 */}
     const handleKeyDown = (event) => {
       if (event.code === "Space" && !isKeyDown) {
         setIsKeyDown(true);
@@ -49,11 +52,12 @@ const App = () => {
           setIsRunning(false);
           setWasStopped(true); // ストップ直後のフラグを立てる
           handleStop(); // タイマーをストップしたときにPOSTリクエストを送信
-          fetchScramble();
+          fetchScramble();// 次のスクランブル取得
         }
       }
     };
-  
+    
+    {/* スペースキーを離した瞬間の処理をする関数 */}
     const handleKeyUp = (event) => {
       if (event.code === "Space" && isKeyDown) {
         setIsKeyDown(false);
@@ -62,6 +66,7 @@ const App = () => {
           setIsRunning(true);
         }
         setWasStopped(false); // 1回の keyup で解除する
+                              //タイマーストップのあと連続的にタイマースタートが始まるのを防ぐためのフラグ
       }
     };
   
@@ -72,6 +77,7 @@ const App = () => {
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, [isRunning, isKeyDown, wasStopped, time, scramble]);
+ 
 
   useEffect(() => {
     if (isRunning) {
@@ -83,7 +89,8 @@ const App = () => {
     }
     return () => clearInterval(interval);
   }, [isRunning]);
-
+  
+  {/* 表示されるタイマーのフォーマット処理する関数 */}
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60000);
     const seconds = Math.floor((time % 60000) / 1000);
@@ -94,18 +101,20 @@ const App = () => {
     } else {
         return `${seconds}.${milliseconds}`;
     }
-};
-const fetchSolves = async () => {
-  try {
-    const response = await axios.get("http://localhost:8000/solves");
-    const sortedSolves = response.data.sort((a, b) => b.id - a.id);
-    setSolves(sortedSolves);
-  } catch (error) {
-    console.error("Error fetching solves:", error);
-  }
-};
+  };
+  
+  {/* タイム一覧を取得する関数 */}
+  const fetchSolves = async () => {
+    try {
+      const response = await axios.get("http://localhost:8000/solves");
+      const sortedSolves = response.data.sort((a, b) => b.id - a.id); // タイム一覧を表示するときのためのソート
+      setSolves(sortedSolves);
+    } catch (error) {
+      console.error("Error fetching solves:", error);
+    }
+  };
 
-  // スクランブルを取得する関数
+  {/* スクランブルを取得する関数 */}
   const fetchScramble = async () => {
     try {
       const response = await axios.get('http://localhost:8000/visual');
@@ -116,11 +125,12 @@ const fetchSolves = async () => {
     }
   };
 
-  // タブ切り替え関数
+  {/* タブ切り替え関数 */}
   const handleTabChange = (tab) => {
     setActiveTab(tab);
   };
-
+  
+  {/* バックエンドから受け取ったキューブvisualを数字の配列から変換するためのカラーマッピング */}
   const colorMapping = {
     1: 'white',
     2: 'orange',
@@ -129,20 +139,8 @@ const fetchSolves = async () => {
     5: 'blue',
     6: 'yellow'
   };
-
-  function mapVisualToColors(visual) {
-    return {
-      white: visual.white.map(row => row.map(value => colorMapping[value])),
-      orange: visual.orange.map(row => row.map(value => colorMapping[value])),
-      green: visual.green.map(row => row.map(value => colorMapping[value])),
-      red: visual.red.map(row => row.map(value => colorMapping[value])),
-      blue: visual.blue.map(row => row.map(value => colorMapping[value])),
-      yellow: visual.yellow.map(row => row.map(value => colorMapping[value]))
-    };
-  }
-
   
-
+  {/* バックエンドから受け取ったキューブvisualを数字の配列から変換するための処理 */}
   useEffect(() => {
     if (visual) {
       setRubikColors([
@@ -160,23 +158,27 @@ const fetchSolves = async () => {
   }, [visual]); // `visual` が更新されるたびに `rubikColors` を再計算
   
   
-  // 初回ロード時にスクランブルを取得
+  {/* 初回ロード時にスクランブルとタイム一覧を取得 */}
   useEffect(() => { 
     fetchScramble(); 
     fetchSolves(); 
   }, []);
-
+  
+  {/* タイム詳細のモーダルを表示する関数 */}
   const handleShowModal = (solve) => {
     setSelectedSolve(solve);
   setEditedNote(solve.note);  // 選択したソルブのメモを設定
   setEditedStatus(solve.status);  // 選択したソルブのステータスを設定
   setShowModal(true);
   };
+
+  {/* タイム詳細のモーダルを閉じる関数 */}
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedSolve(null);
   };
-
+  
+  {/* タイム詳細を更新する関数 */}
   const handleUpdateSolve = async () => {
     if (!selectedSolve) return;
   
@@ -195,7 +197,7 @@ const fetchSolves = async () => {
   
       if (response.status === 200) {
         alert('更新しました');
-        handleCloseModal();
+        handleCloseModal();// 更新後にモーダルを閉じる
         fetchSolves(); // 更新後に最新データを取得
       } else {
         alert('更新に失敗しました');
@@ -205,11 +207,12 @@ const fetchSolves = async () => {
       alert('通信エラーが発生しました');
     }
   };
-
+  
+  {/* タイムを削除する関数 */}
   const handleDeleteSolve = async () => {
     if (!selectedSolve) return;
 
-    if (!window.confirm('本当に削除しますか？')) return;
+    if (!window.confirm('本当に削除しますか？')) return; // 削除最終確認のためのアラート
 
     try {
         // `response` に代入する
@@ -217,7 +220,7 @@ const fetchSolves = async () => {
 
         if (response.status === 200) {
             alert('削除しました');
-            handleCloseModal();
+            handleCloseModal();// 削除後にモーダルを閉じる
             fetchSolves(); // 削除後に最新データを取得
         } else {
             alert('削除に失敗しました');
@@ -226,16 +229,16 @@ const fetchSolves = async () => {
         console.error('エラー:', error);
         alert('通信エラーが発生しました');
     }
-};
+  };
 
-  
-
+  {/* タイム詳細に表示されたスクランブルをコピーする関数 */}
   const handleCopyScramble = () => {
     if (selectedSolve) {
       navigator.clipboard.writeText(selectedSolve.scramble);
     }
   };
 
+  {/* ao5を計算する関数 */}
   const calculateAo5 = (solves, index) => {
     if ((solves.length - index) < 5) return "-"; // 直近5個のデータがない場合
   
@@ -266,10 +269,11 @@ const fetchSolves = async () => {
     return average.toFixed(2);
   };
 
+  {/* ao12を計算する関数 */}
   const calculateAo12 = (solves, index) => {
-    if ((solves.length - index) < 12) return "-"; // 直近5個のデータがない場合
+    if ((solves.length - index) < 12) return "-"; // 直近12個のデータがない場合
   
-    // 直近5つのデータを取得
+    // 直近12個のデータを取得
     const lastFive = solves.slice(index, index + 12);
   
     // タイムを取得し、+2のペナルティを反映
@@ -295,63 +299,75 @@ const fetchSolves = async () => {
     const average = filteredTimes.reduce((sum, time) => sum + time, 0) / filteredTimes.length;
     return average.toFixed(2);
   };
-
+  
+  {/* 有効試技数を返す関数 */}
   const calculateValidMean = (solves) => {
     if (!Array.isArray(solves) || solves.length === 0) return "N/A";
 
     const validSolves = solves
-        .filter(s => s.status?.toUpperCase() !== "DNF")
-        .map(s => (s.status === "+2" ? Number(s.time) + 2 : Number(s.time)))
+        .filter(s => s.status?.toUpperCase() !== "DNF") // DNF以外をフィルター
+        .map(s => (s.status === "+2" ? Number(s.time) + 2 : Number(s.time))) // ステータス+2の処理
         .filter(time => !isNaN(time)); // NaN を除外するため
 
     if (validSolves.length === 0) return "N/A";
 
     const meanTime = validSolves.reduce((sum, time) => sum + time, 0) / validSolves.length;
     return meanTime.toFixed(2) + "s";
-};
+  };
 
-
-const calculateBestAo5 = (solves) => {
-  for (let i = 0; i < solves.length; i++) {
+  {/* ao5のベストを返す関数 */}
+  const calculateBestAo5 = (solves) => {
+    // ao5を配列の長さ分だけループ
+    for (let i = 0; i < solves.length; i++) {
       const ao5 = parseFloat(calculateAo5(solves, i));
+      
+      // 今のao5とbestao5を比較し，速ければ置き換え
       if (!isNaN(ao5) && ao5 !== "DNF" && ao5 < bestAo5) {
-          bestAo5 = ao5;
+        bestAo5 = ao5;
       }
-  }
-  return bestAo5 === Infinity ? "-" : bestAo5.toFixed(2);
-};
-
-const calculateBestAo12 = (solves) => {
-  for (let i = 0; i < solves.length; i++) {
+    }
+    return bestAo5 === Infinity ? "-" : bestAo5.toFixed(2);
+  };
+  
+  {/* ao12のベストを返す関数 */}
+  const calculateBestAo12 = (solves) => {
+    // ao12を配列の長さ分だけループ
+    for (let i = 0; i < solves.length; i++) {
       const ao12 = parseFloat(calculateAo12(solves, i));
+      
+      // 今のao12とbestao12を比較し，速ければ置き換え
       if (!isNaN(ao12) && ao12 !== "DNF" && ao12 < bestAo12) {
-          bestAo12 = ao12;
+        bestAo12 = ao12;
       }
-  }
-  return bestAo12 === Infinity ? "-" : bestAo12.toFixed(2);
-};
+    }
+    return bestAo12 === Infinity ? "-" : bestAo12.toFixed(2);
+  };
+  
+  {/* 現在の単発を返す関数 */}
+  const currentSolve = solves.length > 0 ? solves[0] : null;
+  const currentTime = currentSolve
+    ? currentSolve.status === "DNF"
+      ? "DNF"
+      : currentSolve.status === "+2"
+        ? `${(currentSolve.time + 2).toFixed(2)}+`
+        : currentSolve.time.toFixed(2)
+    : "-";
 
-const currentSolve = solves.length > 0 ? solves[0] : null;
-const currentTime = currentSolve
-  ? currentSolve.status === "DNF"
-    ? "DNF"
-    : currentSolve.status === "+2"
-      ? `${(currentSolve.time + 2).toFixed(2)}+`
-      : currentSolve.time.toFixed(2)
-  : "-";
-
+  {/* ベストの単発を返す関数 */}
   const calculateBestSingle = (solves) => {
+    // 単発を配列の長さ分だけループ
     for (let i = 0; i < solves.length; i++) {
       const solve = solves[i];
 
       if (solve.status === "DNF") continue; // DNFは除外
 
       const single = solve.status === "+2" ? solve.time + 2 : solve.time; // +2ペナルティの処理
-
+      
+      // 今のsingleとbestsingleを比較し，速ければ置き換え
       if (single < bestSingle) {
           bestSingle = single;
       }
-  }
+    }
     return bestSingle === Infinity ? "-" : bestSingle.toFixed(2);
   };
   
@@ -435,248 +451,256 @@ const currentTime = currentSolve
 
       {/* メインコンテンツ */}
       <div
-  style={{
-    flex: '1',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'flex-start', // Align content towards the top
-    alignItems: 'center',
-    textAlign: 'center',
-    marginTop: '35px', // Add margin to fine-tune the position
-  }}
->
-  {activeTab === 'timer' ? (
-    <div>
-      <h1
         style={{
-          fontSize: '16rem',
-          fontWeight: 'bold',
-          marginBottom: '2rem',
-          color: '#000',
-          fontVariantNumeric: 'tabular-nums', 
+          flex: '1',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start', // Align content towards the top
+          alignItems: 'center',
+          textAlign: 'center',
+          marginTop: '35px', // Add margin to fine-tune the position
         }}
       >
-        {formatTime(time)}
-      </h1>
-      <h3
-        style={{
-          fontSize: '4rem',
-          fontWeight: 'normal',
-          color: '#555',
-        }}
-      >
-        ao5: {solves.length >= 5 ? calculateAo5(solves, 0) : "-"}
-      </h3>
-      <h3
-        style={{
-          fontSize: '4rem',
-          fontWeight: 'normal',
-          color: '#555',
-        }}
-      >
-        ao12: {solves.length >= 12 ? calculateAo12(solves, 0) : "-"}
-      </h3>
-      <p>Press Space to Start/Stop</p>
-    </div>
-  ) : (
-    <div>
-      <h2>統計</h2>
-      <p>統計情報をここに追加</p>
-    </div>
-  )}
-</div>
-
-
-<div
-  style={{
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    width: '320px',
-    maxHeight: '75vh', 
-    overflowY: 'scroll', 
-    background: 'rgba(255, 255, 255, 0.9)',
-    padding: '10px',
-    border: '3px solid #ccc',
-    borderRadius: '10px',
-  }}
->
-<style>
-    {`
-      /* Chrome, Safari 用 */
-      div::-webkit-scrollbar {
-        display: none;
-      }
-    `}
-  </style>
-  
-  <div style={{ textAlign: 'center', fontSize: 18, marginBottom: 10 }}>
-  <table style={{ width: '100%', textAlign: 'center', fontSize: 20, marginBottom: 10 }}>
-      <thead>
-        <tr>
-          <th> </th>
-          <th>現在</th>
-          <th>ベスト</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>タイム</td>
-          <td style={{ color: 'blue' }}>{solves.length >= 1 ? currentTime : "-"}</td>
-          <td style={{ color: 'blue' }}>{solves.length >= 1 ? calculateBestSingle(solves) : "-"}</td>
-        </tr>
-        <tr>
-          <td>ao5</td>
-          <td style={{ color: 'blue' }}>{solves.length >= 5 ? calculateAo5(solves, 0) : "-"}</td>
-          <td style={{ color: 'blue' }}>{solves.length >= 5 ? calculateBestAo5(solves) : "-"}</td>
-        </tr>
-        <tr>
-          <td>ao12</td>
-          <td style={{ color: 'blue' }}>{solves.length >= 12 ? calculateAo12(solves, 0) : "-"}</td>
-          <td style={{ color: 'blue' }}>{solves.length >= 12 ? calculateBestAo12(solves) : "-"}</td>
-        </tr>
-      </tbody>
-    </table>
-    <div style={{ textAlign: 'center', fontSize: 20, marginBottom: 10 }}>
-    <span><strong>有効試技数: {solves.filter(s => s.status !== "DNF").length} / {solves.length} </strong></span><br></br>
-    <span><strong> 平均タイム: {calculateValidMean(solves)} </strong></span>
-    </div>
-  </div>
-
-  {/* スクロール可能なリスト */}
-  <div style={{ maxHeight: '300px', overflowY: 'scroll' }}>
-    <table className="table table-striped" style={{ width: '100%', lineHeight: '1', fontSize: 20, textAlign: 'center' }}>
-      <thead style={{ position: 'sticky', top: 0, background: 'rgba(255, 255, 255, 0.9)' }}>
-      <tr>
-        <th style={{ textAlign: 'center' }}> </th>
-        <th style={{ textAlign: 'center' }}>タイム</th>
-        <th style={{ textAlign: 'center' }}>ao5</th>
-        <th style={{ textAlign: 'center' }}>ao12</th>
-      </tr>
-    </thead>
-    <tbody>
-      {solves.map((solve, index) => (
-        <tr key={solve.id} onClick={() => handleShowModal(solve)} style={{ cursor: 'pointer' }}>
-          <td>{solves.length - index}</td>
-          <td>
-            {solve.status === "DNF"
-              ? "DNF"
-              : solve.status === "+2"
-                ? `${(solve.time + 2).toFixed(2)}+`
-                : solve.time.toFixed(2)}
-          </td>
-          <td>{calculateAo5(solves, index)}</td>
-          <td>{calculateAo12(solves, index)}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-  </div>
-
-  {/* モーダルポップアップ */}
-  <Modal show={showModal} onHide={handleCloseModal} centered>
-    <Modal.Header closeButton>
-      <Modal.Title>詳細情報</Modal.Title>
-    </Modal.Header>
-    <Modal.Body>
-      {selectedSolve && (
+        {activeTab === 'timer' ? (
         <div>
-          <p><strong>タイム:</strong> 
-            {selectedSolve.status === "DNF"
-              ? `DNF (${selectedSolve.time.toFixed(2)})`
-              : selectedSolve.status === "+2"
-                ? ` ${(selectedSolve.time + 2).toFixed(2)}+ s`
-                : ` ${selectedSolve.time.toFixed(2)} s`}
-          </p>
-          <p>
-            <strong>スクランブル:</strong><br/> 
-            <span style={{ marginLeft: '10px', flexGrow: 1, wordBreak: 'break-all' }}>
-              {selectedSolve.scramble}
-            </span>
-            <Button 
-              variant="outline-secondary" 
-              size="sm" 
-              onClick={handleCopyScramble} 
-              style={{ marginLeft: '10px' }}
-            >
-              <Clipboard size={16} />
-            </Button>
-          </p>
-          <p><strong>登録日時:</strong> {new Date(selectedSolve.created_at).toLocaleString()}</p>
-
-          {/* メモ編集欄 */}
-          <div>
-            <label><strong>メモ:</strong></label>
-            <textarea
-              value={editedNote}
-              onChange={(e) => setEditedNote(e.target.value)}
-              className="form-control"
-            />
-          </div>
-
-          {/* ステータス選択 */}
-          <div>
-            <label><strong>ステータス:</strong></label>
-            <div>
-              {['ok', '+2', 'DNF'].map((status) => (
-                <label key={status} className="me-2">
-                  <input
-                    type="radio"
-                    name="status"
-                    value={status}
-                    checked={editedStatus === status}
-                    onChange={(e) => setEditedStatus(e.target.value)}
-                  /> {status}
-                </label>
-              ))}
-            </div>
-          </div>
+          <h1
+            style={{
+              fontSize: '16rem',
+              fontWeight: 'bold',
+              marginBottom: '2rem',
+              color: '#000',
+              fontVariantNumeric: 'tabular-nums', 
+            }}
+          >
+            {formatTime(time)}
+          </h1>
+          <h3
+            style={{
+              fontSize: '4rem',
+              fontWeight: 'normal',
+              color: '#555',
+            }}
+          >
+            ao5: {solves.length >= 5 ? calculateAo5(solves, 0) : "-"}
+          </h3>
+          <h3
+            style={{
+              fontSize: '4rem',
+              fontWeight: 'normal',
+              color: '#555',
+            }}
+          >
+            ao12: {solves.length >= 12 ? calculateAo12(solves, 0) : "-"}
+          </h3>
+          <p>Press Space to Start/Stop</p>
         </div>
-      )}
-    </Modal.Body>
-    <Modal.Footer>
-      <Button variant="danger" onClick={handleDeleteSolve}>削除</Button>
-      <Button variant="primary" onClick={handleUpdateSolve}>更新する</Button>
-      <Button variant="secondary" onClick={handleCloseModal}>閉じる</Button>
-    </Modal.Footer>
-  </Modal>
-</div>
+    ) : (
+      <div>
+        <h2>統計</h2>
+        <p>統計情報をここに追加</p>
+      </div>
+    )}
+    </div>
 
+    <div
+      style={{
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        width: '320px',
+        maxHeight: '75vh', 
+        overflowY: 'hidden',
+        background: 'rgba(255, 255, 255, 0.9)',
+        padding: '10px',
+        border: '3px solid #ccc',
+        borderRadius: '10px',
+      }}
+    >
+      <div style={{ textAlign: 'center', fontSize: 18, marginBottom: 10 }}>
+        <table style={{ width: '100%', textAlign: 'center', fontSize: 20, marginBottom: 10 }}>
+          <thead>
+            <tr>
+              <th> </th>
+              <th>現在</th>
+              <th>ベスト</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>タイム</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 1 ? currentTime : "-"}</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 1 ? calculateBestSingle(solves) : "-"}</td>
+            </tr>
+            <tr>
+              <td>ao5</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 5 ? calculateAo5(solves, 0) : "-"}</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 5 ? calculateBestAo5(solves) : "-"}</td>
+            </tr>
+            <tr>
+              <td>ao12</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 12 ? calculateAo12(solves, 0) : "-"}</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 12 ? calculateBestAo12(solves) : "-"}</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div style={{ textAlign: 'center', fontSize: 20, marginBottom: 10 }}>
+          <span><strong>有効試技数: {solves.filter(s => s.status !== "DNF").length} / {solves.length} </strong></span><br></br>
+          <span><strong> 平均タイム: {calculateValidMean(solves)} </strong></span>
+        </div>
+      </div>
 
-      {/* Rubik's Cube 展開図 */}
-      <div className="position-fixed bottom-0 end-0 mb-3 me-3">
-  <div
-    style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(3, 25px) 7px repeat(3, 25px) 7px repeat(3, 25px) 7px repeat(3, 25px)', // 列数を15に設定
-      gridGap: '0px', // 通常のセル間隔
-      backgroundColor: '#e9ecef',
-      padding: '8px',
-      border: '4px solid #ced4da',
-      borderRadius: '15px'
-    }}
-  >
-    {rubikColors.map((color, index) => {
-      // 3×3ブロックの間隔を開ける
-      const isGapRow = Math.floor(index / 15) % 3 === 2 && Math.floor(index / 15) !== 0;
+      <style>
+        {`
+          /* スクロールバーを非表示にする */
+          div::-webkit-scrollbar {
+          display: none;
+          }
+        `}
+      </style>
 
-      return (
-        <div
-          key={index}
-          style={{
-            width: '25px',
-            height: '25px',
-            backgroundColor: color || 'transparent',
-            border: color ? '1px solid black' : 'none',
-            marginBottom: isGapRow ? '7px' : '0px', // 3行ごとに隙間
-          }}
-        />
-      );
-    })}
-  </div>
-</div>
+      {/* スクロール可能なリスト */}
+      <div style={{ maxHeight: '300px', overflowY: 'scroll' }}>
+        <table className="table table-striped" style={{ width: '100%', lineHeight: '1', fontSize: 20, textAlign: 'center' }}>
+          <thead style={{ position: 'sticky', top: 0, background: 'rgba(255, 255, 255, 0.9)' }}>
+            <tr>
+              <th style={{ textAlign: 'center' }}> </th>
+              <th style={{ textAlign: 'center' }}>タイム</th>
+              <th style={{ textAlign: 'center' }}>ao5</th>
+              <th style={{ textAlign: 'center' }}>ao12</th>
+            </tr>
+          </thead>
+          <tbody>
+            {solves.map((solve, index) => (
+              <tr key={solve.id} onClick={() => handleShowModal(solve)} style={{ cursor: 'pointer' }}>
+                <td>{solves.length - index}</td>
+                <td>
+                  {solve.status === "DNF"
+                    ? "DNF"
+                    : solve.status === "+2"
+                      ? `${(solve.time + 2).toFixed(2)}+`
+                      : solve.time.toFixed(2)}
+                </td>
+                <td>{calculateAo5(solves, index)}</td>
+                <td>{calculateAo12(solves, index)}</td>
+              </tr>
+               ))}
+           </tbody>
+        </table>
+      </div>
+
+      {/* モーダルポップアップ */}
+      <Modal show={showModal} onHide={handleCloseModal} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>詳細情報</Modal.Title>
+        </Modal.Header>
+
+        <Modal.Body>
+          {selectedSolve && (
+            <div>
+              <p>
+                <strong>タイム:</strong> 
+                  {selectedSolve.status === "DNF"
+                    ? `DNF (${selectedSolve.time.toFixed(2)})`
+                    : selectedSolve.status === "+2"
+                      ? ` ${(selectedSolve.time + 2).toFixed(2)}+ s`
+                      : ` ${selectedSolve.time.toFixed(2)} s`}
+              </p>
+
+              <p>
+                <strong>スクランブル:</strong><br/> 
+                  <span style={{ marginLeft: '10px', flexGrow: 1, wordBreak: 'break-all' }}>
+                    {selectedSolve.scramble}
+                  </span>
+                  <Button 
+                    variant="outline-secondary" 
+                    size="sm" 
+                    onClick={handleCopyScramble} 
+                    style={{ marginLeft: '10px' }}
+                  >
+                    <Clipboard size={16} />
+                  </Button>
+              </p>
+
+              <p>
+                <strong>登録日時:</strong> {new Date(selectedSolve.created_at).toLocaleString()}
+              </p>
+
+              {/* メモ編集欄 */}
+              <div>
+                <label><strong>メモ:</strong></label>
+                <textarea
+                  value={editedNote}
+                  onChange={(e) => setEditedNote(e.target.value)}
+                  className="form-control"
+                />
+              </div>
+
+              {/* ステータス選択 */}
+              <div>
+                <label><strong>ステータス:</strong></label>
+                <div>
+                  {['ok', '+2', 'DNF'].map((status) => (
+                    <label key={status} className="me-2">
+                      <input
+                        type="radio"
+                        name="status"
+                        value={status}
+                        checked={editedStatus === status}
+                        onChange={(e) => setEditedStatus(e.target.value)}
+                      /> {status}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </Modal.Body>
+
+        <Modal.Footer>
+          <Button variant="danger" onClick={handleDeleteSolve}>削除</Button>
+          <Button variant="primary" onClick={handleUpdateSolve}>更新する</Button>
+          <Button variant="secondary" onClick={handleCloseModal}>閉じる</Button>
+        </Modal.Footer>
+      </Modal>
 
     </div>
+
+
+    {/* Rubik's Cube 展開図 */}
+    <div className="position-fixed bottom-0 end-0 mb-3 me-3">
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 25px) 7px repeat(3, 25px) 7px repeat(3, 25px) 7px repeat(3, 25px)', // 列数を15に設定
+          gridGap: '0px', // 通常のセル間隔
+          backgroundColor: '#e9ecef',
+          padding: '8px',
+          border: '4px solid #ced4da',
+          borderRadius: '15px'
+        }}
+      >
+        {rubikColors.map((color, index) => {
+        // 3×3ブロックの間隔を開ける
+          const isGapRow = Math.floor(index / 15) % 3 === 2 && Math.floor(index / 15) !== 0;
+
+          return (
+            <div
+              key={index}
+              style={{
+                width: '25px',
+                height: '25px',
+                backgroundColor: color || 'transparent',
+                border: color ? '1px solid black' : 'none',
+                marginBottom: isGapRow ? '7px' : '0px', // 3行ごとに隙間
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+
+  </div>
   );
 };
 
