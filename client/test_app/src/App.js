@@ -28,7 +28,7 @@ const App = () => {
   const handleStop = async () => {
     try {
       const postData = {
-        time: time / 1000, // ミリ秒 → 秒に変換
+        time: Math.floor(time / 10) / 100, // ミリ秒(4321) → 秒(4.32)に変換
         scramble: scramble,
         note: "",
         status: "ok",
@@ -94,15 +94,28 @@ const App = () => {
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60000);
     const seconds = Math.floor((time % 60000) / 1000);
-    const milliseconds = Math.floor((time % 1000) / 10).toString().padStart(2, "0");
+    const milliseconds = ((time % 1000) / 10).toString().padStart(2, "0");
 
     if (minutes > 0) {
-        return `${minutes}:${seconds.toString().padStart(2, "0")}.${milliseconds}`;
+      return `${minutes}:${seconds.toString().padStart(2, "0")}.${milliseconds}`;
     } else {
-        return `${seconds}.${milliseconds}`;
+      return `${seconds}.${milliseconds}`;
     }
   };
-  
+
+  {/* DB保存されたタイムのフォーマット処理する関数 */}
+  const formatSavedTime = (time) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    const milliseconds = Math.floor((time % 1) * 100);
+
+    if (minutes > 0) {
+      return `${minutes}:${seconds.toString().padStart(2, "0")}.${milliseconds.toString().padStart(2, "0")}`;
+    } else {
+      return `${seconds}.${milliseconds.toString().padStart(2, "0")}`;
+    }
+  };
+
   {/* タイム一覧を取得する関数 */}
   const fetchSolves = async () => {
     try {
@@ -266,7 +279,7 @@ const App = () => {
     
     // 平均を計算
     const average = filteredTimes.reduce((sum, time) => sum + time, 0) / filteredTimes.length;
-    return average.toFixed(2);
+    return formatSavedTime(average);
   };
 
   {/* ao12を計算する関数 */}
@@ -297,7 +310,7 @@ const App = () => {
     
     // 平均を計算
     const average = filteredTimes.reduce((sum, time) => sum + time, 0) / filteredTimes.length;
-    return average.toFixed(2);
+    return formatSavedTime(average);
   };
   
   {/* 有効試技数を返す関数 */}
@@ -312,7 +325,7 @@ const App = () => {
     if (validSolves.length === 0) return "N/A";
 
     const meanTime = validSolves.reduce((sum, time) => sum + time, 0) / validSolves.length;
-    return meanTime.toFixed(2) + "s";
+    return formatSavedTime(meanTime);
   };
 
   {/* ao5のベストを返す関数 */}
@@ -326,7 +339,7 @@ const App = () => {
         bestAo5 = ao5;
       }
     }
-    return bestAo5 === Infinity ? "-" : bestAo5.toFixed(2);
+    return bestAo5 === Infinity ? "-" : bestAo5;
   };
   
   {/* ao12のベストを返す関数 */}
@@ -340,7 +353,7 @@ const App = () => {
         bestAo12 = ao12;
       }
     }
-    return bestAo12 === Infinity ? "-" : bestAo12.toFixed(2);
+    return bestAo12 === Infinity ? "-" : bestAo12;
   };
   
   {/* 現在の単発を返す関数 */}
@@ -349,8 +362,8 @@ const App = () => {
     ? currentSolve.status === "DNF"
       ? "DNF"
       : currentSolve.status === "+2"
-        ? `${(currentSolve.time + 2).toFixed(2)}+`
-        : currentSolve.time.toFixed(2)
+        ? `${formatSavedTime((currentSolve.time + 2))}+`
+        : formatSavedTime(currentSolve.time)
     : "-";
 
   {/* ベストの単発を返す関数 */}
@@ -368,7 +381,7 @@ const App = () => {
           bestSingle = single;
       }
     }
-    return bestSingle === Infinity ? "-" : bestSingle.toFixed(2);
+    return bestSingle === Infinity ? "-" : formatSavedTime(bestSingle);
   };
   
 
@@ -578,8 +591,8 @@ const App = () => {
                   {solve.status === "DNF"
                     ? "DNF"
                     : solve.status === "+2"
-                      ? `${(solve.time + 2).toFixed(2)}+`
-                      : solve.time.toFixed(2)}
+                      ? `${formatSavedTime((solve.time + 2))}+`
+                      : formatSavedTime(solve.time)}
                 </td>
                 <td>{calculateAo5(solves, index)}</td>
                 <td>{calculateAo12(solves, index)}</td>
@@ -601,10 +614,10 @@ const App = () => {
               <p>
                 <strong>タイム:</strong> 
                   {selectedSolve.status === "DNF"
-                    ? `DNF (${selectedSolve.time.toFixed(2)})`
+                    ? `DNF (${formatSavedTime(selectedSolve.time)} )`
                     : selectedSolve.status === "+2"
-                      ? ` ${(selectedSolve.time + 2).toFixed(2)}+ s`
-                      : ` ${selectedSolve.time.toFixed(2)} s`}
+                      ? ` ${formatSavedTime((selectedSolve.time + 2))}`
+                      : ` ${formatSavedTime(selectedSolve.time)} `}
               </p>
 
               <p>
