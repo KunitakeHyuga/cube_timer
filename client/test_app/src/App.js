@@ -502,7 +502,6 @@ const App = () => {
     )}
     </div>
 
-
     <div
       style={{
         position: 'absolute',
@@ -510,22 +509,13 @@ const App = () => {
         left: 20,
         width: '320px',
         maxHeight: '75vh', 
-        overflowY: 'scroll', 
+        overflowY: 'hidden',
         background: 'rgba(255, 255, 255, 0.9)',
         padding: '10px',
         border: '3px solid #ccc',
         borderRadius: '10px',
       }}
     >
-      <style> 
-        {`
-          /* Chrome, Safari 用 */
-          div::-webkit-scrollbar { // スクロールバーを表示せずにスクロールできるようにする
-          display: none;
-          }
-        `}
-      </style>
-  
       <div style={{ textAlign: 'center', fontSize: 18, marginBottom: 10 }}>
         <table style={{ width: '100%', textAlign: 'center', fontSize: 20, marginBottom: 10 }}>
           <thead>
@@ -559,6 +549,15 @@ const App = () => {
           <span><strong> 平均タイム: {calculateValidMean(solves)} </strong></span>
         </div>
       </div>
+
+      <style>
+        {`
+          /* スクロールバーを非表示にする */
+          div::-webkit-scrollbar {
+          display: none;
+          }
+        `}
+      </style>
 
       {/* スクロール可能なリスト */}
       <div style={{ maxHeight: '300px', overflowY: 'scroll' }}>
