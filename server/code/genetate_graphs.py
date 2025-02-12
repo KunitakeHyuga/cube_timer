@@ -80,7 +80,7 @@ def get_boxplot(db: Session = Depends(get_db)):
     return Response(content=buf.getvalue(), media_type="image/png")
 
 # **移動平均**
-def get_moving_average(db: Session = Depends(get_db), window_size: int = 5):
+def get_moving_average(db: Session = Depends(get_db), window_size_5: int = 5, window_size_12: int = 12):
     solves = crud.get_solves(db)
     if not solves:
         raise HTTPException(status_code=404, detail="No solves found")
@@ -89,11 +89,14 @@ def get_moving_average(db: Session = Depends(get_db), window_size: int = 5):
     solve_times = [solve.time for solve in solves]
     
     # 移動平均の計算
-    moving_avg = pd.Series(solve_times).rolling(window=window_size).mean()
+    moving_avg_5 = pd.Series(solve_times).rolling(window=window_size_5).mean()
+    moving_avg_12 = pd.Series(solve_times).rolling(window=window_size_12).mean() 
     
     plt.figure(figsize=(10, 5))
-    plt.plot(solve_counts, solve_times, marker='o', linestyle='-', color='b', label="Original")
-    plt.plot(solve_counts, moving_avg, linestyle='-', color='r', label=f"{window_size}-Solve Moving Average")
+    plt.plot(solve_counts, solve_times, linestyle='-', color='b', label="Single")
+    plt.plot(solve_counts, moving_avg_5, linestyle='-', color='r', label=f"Average of {window_size_5}")
+    plt.plot(solve_counts, moving_avg_12, linestyle='-', color='g', label=f"Average of {window_size_12}")
+    
     plt.xlabel("Solve Count")
     plt.ylabel("Time (seconds)")
     plt.title("Moving Average of Solve Times")
