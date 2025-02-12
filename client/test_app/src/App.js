@@ -517,7 +517,6 @@ const calculateAo100 = (solves, index) => {
           marginTop: '35px', // Add margin to fine-tune the position
         }}
       >
-        {activeTab === 'timer' ? (
         <div>
           <h1
             style={{
@@ -550,14 +549,9 @@ const calculateAo100 = (solves, index) => {
           </h3>
           <p>Press Space to Start/Stop</p>
         </div>
-    ) : (
-      <div>
-        <h2>統計</h2>
-        <p>統計情報をここに追加</p>
-      </div>
-    )}
     </div>
 
+    {activeTab === 'timer' && (
     <div
       style={{
         position: 'absolute',
@@ -664,7 +658,7 @@ const calculateAo100 = (solves, index) => {
                   {selectedSolve.status === "DNF"
                     ? `DNF (${formatSavedTime(selectedSolve.time)} )`
                     : selectedSolve.status === "+2"
-                      ? ` ${formatSavedTime((selectedSolve.time + 2))}`
+                      ? ` ${formatSavedTime((selectedSolve.time + 2))+"+"}`
                       : ` ${formatSavedTime(selectedSolve.time)} `}
               </p>
 
@@ -726,7 +720,7 @@ const calculateAo100 = (solves, index) => {
       </Modal>
 
     </div>
-
+    )}
 
     {/* Rubik's Cube 展開図 */}
     <div className="position-fixed bottom-0 end-0 mb-3 me-3">
