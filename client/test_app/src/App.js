@@ -18,6 +18,7 @@ const App = () => {
   const [selectedSolve, setSelectedSolve] = useState(null);
   const [editedNote, setEditedNote] = useState(selectedSolve ? selectedSolve.note : "");
   const [editedStatus, setEditedStatus] = useState(selectedSolve ? selectedSolve.status : "ok");
+  const [graphUrl, setGraphUrl] = useState(null);
   let interval;
   let bestSingle = Infinity;
   let bestAo5 = Infinity;
@@ -142,6 +143,12 @@ const App = () => {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
   };
+
+  useEffect(() => {
+    if (activeTab === "stats") {
+      fetchGraph();
+    }
+  }, [activeTab]);
   
   {/* バックエンドから受け取ったキューブvisualを数字の配列から変換するためのカラーマッピング */}
   const colorMapping = {
@@ -426,6 +433,20 @@ const calculateAo100 = (solves, index) => {
     }
     return bestSingle === Infinity ? "-" : formatSavedTime(bestSingle);
   };
+
+  const fetchGraph = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/graph/moving_average");
+      if (!response.ok) {
+        throw new Error("Failed to fetch graph");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setGraphUrl(url);
+    } catch (error) {
+      console.error("Error fetching graph:", error);
+    }
+  };
   
 
   return (
@@ -517,7 +538,6 @@ const calculateAo100 = (solves, index) => {
           marginTop: '35px', // Add margin to fine-tune the position
         }}
       >
-        {activeTab === 'timer' ? (
         <div>
           <h1
             style={{
@@ -550,14 +570,9 @@ const calculateAo100 = (solves, index) => {
           </h3>
           <p>Press Space to Start/Stop</p>
         </div>
-    ) : (
-      <div>
-        <h2>統計</h2>
-        <p>統計情報をここに追加</p>
-      </div>
-    )}
     </div>
 
+    {/* {activeTab === 'timer' && ( */}
     <div
       style={{
         position: 'absolute',
@@ -664,7 +679,7 @@ const calculateAo100 = (solves, index) => {
                   {selectedSolve.status === "DNF"
                     ? `DNF (${formatSavedTime(selectedSolve.time)} )`
                     : selectedSolve.status === "+2"
-                      ? ` ${formatSavedTime((selectedSolve.time + 2))}`
+                      ? ` ${formatSavedTime((selectedSolve.time + 2))+"+"}`
                       : ` ${formatSavedTime(selectedSolve.time)} `}
               </p>
 
@@ -726,10 +741,11 @@ const calculateAo100 = (solves, index) => {
       </Modal>
 
     </div>
-
-
+    
     {/* Rubik's Cube 展開図 */}
     <div className="position-fixed bottom-0 end-0 mb-3 me-3">
+    {activeTab === 'timer' && (
+
       <div
         style={{
           display: 'grid',
@@ -759,6 +775,30 @@ const calculateAo100 = (solves, index) => {
           );
         })}
       </div>
+    )}
+
+    {/* 折れ線グラフ */}
+    {activeTab === "stats" && (
+  <div
+    style={{
+      backgroundColor: '#e9ecef',
+      padding: '8px',
+      border: '4px solid #ced4da',
+      borderRadius: '15px',
+      position: "fixed",
+      bottom: 20,
+      right: 20
+    }}
+  >
+    {graphUrl ? (
+      <img src={graphUrl} alt="Moving Average Graph" style={{ maxWidth: "400px", height: "300px" }} />
+    ) : (
+      <p>Loading graph...</p>
+    )}
+  </div>
+)}
+
+    
     </div>
 
   </div>
