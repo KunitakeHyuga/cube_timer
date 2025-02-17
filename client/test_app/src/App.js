@@ -18,9 +18,14 @@ const App = () => {
   const [selectedSolve, setSelectedSolve] = useState(null);
   const [editedNote, setEditedNote] = useState(selectedSolve ? selectedSolve.note : "");
   const [editedStatus, setEditedStatus] = useState(selectedSolve ? selectedSolve.status : "ok");
-  const [graphUrl, setGraphUrl] = useState(null);
+  const [linegraphUrl, setLinegraphUrl] = useState(null);
+  const [histogramUrl, setHistogramUrl] = useState(null);
+  const [boxplotUrl, setBoxplotUrl] = useState(null);
+
   let interval;
+  let worstSingle = -Infinity;
   let bestSingle = Infinity;
+  let bestMo3 = Infinity;
   let bestAo5 = Infinity;
   let bestAo12 = Infinity;
   let bestAo100 = Infinity;
@@ -146,9 +151,15 @@ const App = () => {
 
   useEffect(() => {
     if (activeTab === "stats") {
-      fetchGraph();
+      fetchGraphs();
     }
   }, [activeTab]);
+
+  const fetchGraphs = async () => {
+    await fetchGraph("http://localhost:8000/graph/moving_average", setLinegraphUrl);
+    await fetchGraph("http://localhost:8000/graph/histogram", setHistogramUrl);
+    await fetchGraph("http://localhost:8000/graph/boxplot", setBoxplotUrl);
+  };
   
   {/* バックエンドから受け取ったキューブvisualを数字の配列から変換するためのカラーマッピング */}
   const colorMapping = {
@@ -258,6 +269,33 @@ const App = () => {
     }
   };
 
+  {/* mo3を計算する関数 */}
+  const calculateMo3 = (solves, index) => {
+    if ((solves.length - index) < 3) return "-"; // 直近3個のデータがない場合
+
+    // 直近3個のデータを取得
+    const lastThree = solves.slice(index, index + 3);
+
+    // タイムを取得し、+2のペナルティを反映
+    const times = lastThree.map(solve =>
+      solve.status === "DNF" ? "DNF" : solve.status === "+2" ? solve.time + 2 : solve.time
+    );
+
+    // DNF の数をカウント
+    const dnfCount = times.filter(time => time === "DNF").length;
+
+    if (dnfCount >= 1) return "DNF"; // DNF が1つでもあれば mo3 も DNF
+
+    // DNF 以外のタイムを取得
+    const filteredTimes = times.filter(time => time !== "DNF");
+
+    // 平均を計算
+    const average = filteredTimes.reduce((sum, time) => sum + time, 0) / filteredTimes.length;
+
+    return formatSavedTime(average);
+  };
+
+
   {/* ao5を計算する関数 */}
   const calculateAo5 = (solves, index) => {
     if ((solves.length - index) < 5) return "-"; // 直近5個のデータがない場合
@@ -364,6 +402,20 @@ const calculateAo100 = (solves, index) => {
     return formatSavedTime(meanTime);
   };
 
+  {/* mo3のベストを返す関数 */}
+  const calculateBestMo3 = (solves) => {
+    // mo3を配列の長さ分だけループ
+    for (let i = 0; i < solves.length; i++) {
+      const mo3 = parseFloat(calculateMo3(solves, i));
+      
+      // 今のmo3とbestmo3を比較し，速ければ置き換え
+      if (!isNaN(mo3) && mo3 !== "DNF" && mo3 < bestMo3) {
+        bestMo3 = mo3;
+      }
+    }
+    return bestMo3 === Infinity ? "-" : formatSavedTime(bestMo3);
+  };
+
   {/* ao5のベストを返す関数 */}
   const calculateBestAo5 = (solves) => {
     // ao5を配列の長さ分だけループ
@@ -434,20 +486,52 @@ const calculateAo100 = (solves, index) => {
     return bestSingle === Infinity ? "-" : formatSavedTime(bestSingle);
   };
 
-  const fetchGraph = async () => {
+  {/* 最遅の単発を返す関数 */}
+  const calculateWorstSingle = (solves) => {
+    // 単発を配列の長さ分だけループ
+    for (let i = 0; i < solves.length; i++) {
+      const solve = solves[i];
+
+      if (solve.status === "DNF") continue; // DNFは除外
+
+      const single = solve.status === "+2" ? solve.time + 2 : solve.time; // +2ペナルティの処理
+      
+      // 今のsingleとbestsingleを比較し，遅ければ置き換え
+      if (single > worstSingle) {
+        worstSingle = single;
+      }
+    }
+    return worstSingle === Infinity ? "-" : formatSavedTime(worstSingle);
+  };
+
+  const fetchGraph = async (url, setUrl) => {
     try {
-      const response = await fetch("http://localhost:8000/graph/moving_average");
+      const response = await fetch(url, { cache: "no-store" });
       if (!response.ok) {
-        throw new Error("Failed to fetch graph");
+        throw new Error(`Failed to fetch graph from ${url}`);
       }
       const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      setGraphUrl(url);
+      const objectUrl = URL.createObjectURL(blob);
+      setUrl(prevUrl => {
+        if (prevUrl) URL.revokeObjectURL(prevUrl);
+        return objectUrl;
+      });
     } catch (error) {
-      console.error("Error fetching graph:", error);
+      console.error(`Error fetching graph from ${url}:`, error);
     }
   };
-  
+
+  const calculateElapsedTime = () => {
+    if (solves.length === 0) return "-";
+    const firstSolveTime = new Date(solves[solves.length - 1].created_at).getTime();
+    const currentTime = new Date().getTime();
+    const elapsedMilliseconds = currentTime - firstSolveTime;
+    const elapsedSeconds = Math.floor((elapsedMilliseconds / 1000) % 60);
+    const elapsedMinutes = Math.floor((elapsedMilliseconds / (1000 * 60)) % 60);
+    const elapsedHours = Math.floor(elapsedMilliseconds / (1000 * 60 * 60));
+    return `${elapsedHours}:${elapsedMinutes}.${elapsedSeconds}`;
+  };
+
 
   return (
     <div
@@ -485,6 +569,7 @@ const calculateAo100 = (solves, index) => {
       </nav>
 
       {/* Scramble Display & Next Button */}
+      {activeTab === 'timer' && (
       <div
         style={{
           position: 'relative',  // ボタンを絶対位置で配置する基準
@@ -525,8 +610,10 @@ const calculateAo100 = (solves, index) => {
           次へ
         </button>
       </div>
+      )}
 
       {/* メインコンテンツ */}
+      {activeTab === 'timer' && (
       <div
         style={{
           flex: '1',
@@ -570,7 +657,9 @@ const calculateAo100 = (solves, index) => {
           </h3>
           <p>Press Space to Start/Stop</p>
         </div>
-    </div>
+     </div>
+    )}
+
 
     {/* {activeTab === 'timer' && ( */}
     <div
@@ -739,13 +828,13 @@ const calculateAo100 = (solves, index) => {
           <Button variant="secondary" onClick={handleCloseModal}>閉じる</Button>
         </Modal.Footer>
       </Modal>
-
     </div>
+    )}
+
     
     {/* Rubik's Cube 展開図 */}
     <div className="position-fixed bottom-0 end-0 mb-3 me-3">
     {activeTab === 'timer' && (
-
       <div
         style={{
           display: 'grid',
@@ -777,30 +866,112 @@ const calculateAo100 = (solves, index) => {
       </div>
     )}
 
-    {/* 折れ線グラフ */}
-    {activeTab === "stats" && (
-  <div
-    style={{
-      backgroundColor: '#e9ecef',
-      padding: '8px',
-      border: '4px solid #ced4da',
-      borderRadius: '15px',
-      position: "fixed",
-      bottom: 20,
-      right: 20
-    }}
-  >
-    {graphUrl ? (
-      <img src={graphUrl} alt="Moving Average Graph" style={{ maxWidth: "400px", height: "300px" }} />
-    ) : (
-      <p>Loading graph...</p>
-    )}
+{activeTab === "stats" && (
+  <div>
+    <div
+      style={{
+        position: "fixed",
+        top: "73px",
+        left: "140px",
+        width: "600px",
+        height: "280px",
+        maxWidth: "100%", 
+        maxHeight: "100%", 
+        objectFit: "contain",
+        boxShadow: "5px 5px 15px rgba(0, 0, 0, 0.3)",  // ← 影を追加
+        borderRadius: "8px"  // 角を少し丸める（オプション）
+        
+      }} 
+    > 
+      <div style={{ textAlign: 'center', fontSize: 20, marginBottom: 10 }}>
+          <span><strong>有効試技数: {solves.filter(s => s.status !== "DNF").length} / {solves.length} , 平均タイム: {calculateValidMean(solves)} </strong></span>
+          <br></br>総経過時間: {calculateElapsedTime()}
+          <br></br>ベスト: {solves.length >= 1 ? calculateBestSingle(solves) : "-"}, ワースト: {solves.length >= 1 ? calculateWorstSingle(solves) : "-"}
+      </div>
+
+      <table style={{ width: '80%', textAlign: 'center', fontSize: 20, marginBottom: 10, margin: "auto" }}>
+          <thead>
+            <tr>
+              <th> </th>
+              <th>現在</th>
+              <th>標準偏差</th>
+              <th>ベスト</th>
+              <th>標準偏差</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>mo3</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 3 ? calculateMo3(solves, 0) : "-"}</td>
+              <td>タイム</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 3 ? calculateBestMo3(solves) : "-"}</td>
+              <td>タイム</td>
+            </tr>
+            <tr>
+              <td>ao5</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 5 ? calculateAo5(solves, 0) : "-"}</td>
+              <td>タイム</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 5 ? calculateBestAo5(solves) : "-"}</td>
+              <td>タイム</td>
+            </tr>
+            <tr>
+              <td>ao12</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 12 ? calculateAo12(solves, 0) : "-"}</td>
+              <td>タイム</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 12 ? calculateBestAo12(solves) : "-"}</td>
+              <td>タイム</td>
+            </tr>
+            <tr>
+              <td>ao100</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 100 ? calculateAo100(solves, 0) : "-"}</td>
+              <td>タイム</td>
+              <td style={{ color: 'blue' }}>{solves.length >= 100 ? calculateBestAo100(solves) : "-"}</td>
+              <td>タイム</td>
+            </tr>
+          </tbody>
+        </table>
+    </div>
+
+    <div style={{ position: "fixed", width: "40vw", height: "45vh", bottom: 20, right: 90 }}>
+      {linegraphUrl ? (
+        <img 
+          src={linegraphUrl} 
+          alt="Moving Average Graph" 
+          style={{ 
+            maxWidth: "100%", 
+            maxHeight: "100%", 
+            objectFit: "contain",
+            boxShadow: "5px 5px 15px rgba(0, 0, 0, 0.3)",  // ← 影を追加
+            borderRadius: "8px"  // 角を少し丸める（オプション）
+          }} 
+        />
+      ) : (
+        <p>Loading graph...</p>
+      )}
+    </div>
+
+    <div style={{ position: "fixed", width: "40vw", height: "45vh", bottom: 20, left: 140 }}>
+      {histogramUrl ? (
+        <img 
+          src={histogramUrl} 
+          alt="Histogram" 
+          style={{ 
+            maxWidth: "100%", 
+            maxHeight: "100%", 
+            objectFit: "contain",
+            boxShadow: "5px 5px 15px rgba(0, 0, 0, 0.3)",  // ← 影を追加
+            borderRadius: "8px"
+          }} 
+        />
+      ) : (
+        <p>Loading graph...</p>
+      )}
+    </div>
   </div>
 )}
 
-    
-    </div>
-
+  
+  </div>
   </div>
   );
 };
