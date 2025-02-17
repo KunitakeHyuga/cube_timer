@@ -21,6 +21,7 @@ const App = () => {
   const [linegraphUrl, setLinegraphUrl] = useState(null);
   const [histogramUrl, setHistogramUrl] = useState(null);
   const [boxplotUrl, setBoxplotUrl] = useState(null);
+
   let interval;
   let worstSingle = -Infinity;
   let bestSingle = Infinity;
@@ -531,6 +532,7 @@ const calculateAo100 = (solves, index) => {
     return `${elapsedHours}:${elapsedMinutes}.${elapsedSeconds}`;
   };
 
+
   return (
     <div
       style={{
@@ -659,7 +661,7 @@ const calculateAo100 = (solves, index) => {
     )}
 
 
-    {activeTab === 'timer' && (
+    {/* {activeTab === 'timer' && ( */}
     <div
       style={{
         position: 'absolute',
@@ -828,6 +830,7 @@ const calculateAo100 = (solves, index) => {
       </Modal>
     </div>
     )}
+
     
     {/* Rubik's Cube 展開図 */}
     <div className="position-fixed bottom-0 end-0 mb-3 me-3">
