@@ -661,7 +661,7 @@ const calculateAo100 = (solves, index) => {
     )}
 
 
-    {/* {activeTab === 'timer' && ( */}
+    {activeTab === 'timer' && (
     <div
       style={{
         position: 'absolute',
